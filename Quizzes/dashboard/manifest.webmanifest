@@ -1,0 +1,25 @@
+{
+  "id": "/DS_Academy/Quizzes/dashboard/",
+  "name": "DS Academy Quiz Dashboard",
+  "short_name": "DS Quiz",
+  "description": "Daily and weekly data science quiz practice with answer checking and weak-area tracking.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f1eb",
+  "theme_color": "#24756d",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
