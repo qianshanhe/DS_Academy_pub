@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#24756d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="DS Quiz">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>DS Academy Quiz Dashboard</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="apple-touch-icon" href="./icons/icon-180.png">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">DS</div>
+        <div>
+          <p class="eyebrow">DS Academy</p>
+          <h1>Quiz Dashboard</h1>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="tool-button" id="exportAttempts" type="button">
+          Export
+        </button>
+        <button class="tool-button" id="resetAttempt" type="button">
+          Reset
+        </button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar" aria-label="Quiz navigation">
+        <div class="today-card">
+          <div>
+            <p class="metric-label">Current Set</p>
+            <strong id="quizTitle">Daily Quiz</strong>
+            <span id="quizMeta">3 questions</span>
+          </div>
+          <div class="set-badge" aria-hidden="true">Q</div>
+        </div>
+        <nav class="tabs" aria-label="Quiz type">
+          <button class="tab is-active" type="button" data-quiz="daily">Daily</button>
+          <button class="tab" type="button" data-quiz="weekly">Weekly</button>
+        </nav>
+        <section class="progress-panel" aria-labelledby="progressTitle">
+          <h2 id="progressTitle">Progress</h2>
+          <div class="progress-ring" aria-label="Current score">
+            <span id="scoreValue">--</span>
+          </div>
+          <p id="scoreSummary">Submit your answers to score this attempt.</p>
+        </section>
+        <section class="weak-panel" aria-labelledby="weakTitle">
+          <h2 id="weakTitle">Weak Areas</h2>
+          <div id="weakAreas" class="tag-list">
+            <span class="empty-state">No attempts yet</span>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace" aria-live="polite">
+        <div class="quiz-header">
+          <div>
+            <p class="eyebrow" id="quizMode">Daily Practice</p>
+            <h2 id="quizHeading">Prediction, Causal Impact, and Evaluation</h2>
+          </div>
+          <button class="primary-button" id="submitQuiz" type="button">Check Answers</button>
+        </div>
+
+        <form id="quizForm" class="question-list"></form>
+
+        <section class="result-panel" id="resultPanel" hidden>
+          <div>
+            <p class="metric-label">Attempt Result</p>
+            <h2 id="resultTitle">Not scored</h2>
+          </div>
+          <p id="resultDetail"></p>
+        </section>
+
+        <section class="history-panel" aria-labelledby="historyTitle">
+          <div class="section-header">
+            <h2 id="historyTitle">Attempt History</h2>
+            <button class="text-button" id="clearHistory" type="button">Clear History</button>
+          </div>
+          <div id="historyList" class="history-list">
+            <p class="empty-state">No attempts saved yet.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
