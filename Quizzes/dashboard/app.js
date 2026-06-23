@@ -25,14 +25,33 @@ const quizzes = {
         type: "Interactive Calculation",
         skill: "Confusion matrix math",
         prompt:
-          "Place TP, FP, FN, and TN into the confusion matrix. The dashboard will calculate precision, recall, and false positive rate for you.",
-        metricDrag: true,
-        chips: ["TP", "FP", "FN", "TN"],
-        cells: [
-          { id: "pred-pos-actual-pos", actual: "Actual Positive", predicted: "Predicted Positive", count: 80, role: "TP" },
-          { id: "pred-neg-actual-pos", actual: "Actual Positive", predicted: "Predicted Negative", count: 20, role: "FN" },
-          { id: "pred-pos-actual-neg", actual: "Actual Negative", predicted: "Predicted Positive", count: 40, role: "FP" },
-          { id: "pred-neg-actual-neg", actual: "Actual Negative", predicted: "Predicted Negative", count: 860, role: "TN" }
+          "Build each metric formula by placing TP, FP, FN, and TN into the empty numerator and denominator slots. The dashboard will calculate the result from the formula you build.",
+        formulaBuilder: true,
+        chips: [
+          { role: "TP", count: 80 },
+          { role: "FP", count: 40 },
+          { role: "FN", count: 20 },
+          { role: "TN", count: 860 }
+        ],
+        formulas: [
+          {
+            id: "precision",
+            label: "Precision",
+            expectedNumerator: ["TP"],
+            expectedDenominator: ["TP", "FP"]
+          },
+          {
+            id: "recall",
+            label: "Recall",
+            expectedNumerator: ["TP"],
+            expectedDenominator: ["TP", "FN"]
+          },
+          {
+            id: "fpr",
+            label: "False positive rate",
+            expectedNumerator: ["FP"],
+            expectedDenominator: ["FP", "TN"]
+          }
         ],
         explanation:
           "Precision = 80 / (80 + 40) = 0.667. Recall = 80 / (80 + 20) = 0.800. False positive rate = 40 / (40 + 860) = 0.044."
@@ -171,52 +190,55 @@ function freeResponseScore(question, response) {
   return hits.length >= Math.ceil(question.keywords.length * 0.45);
 }
 
-function renderMetricDrag(question) {
+function renderFormulaBuilder(question) {
   return `
-    <div class="metric-builder" data-metric-question="${question.id}">
+    <div class="formula-builder" data-formula-question="${question.id}">
       <div class="chip-bank" aria-label="Metric labels to place">
         ${question.chips
           .map(
             (chip) => `
-              <button class="metric-chip" type="button" draggable="true" data-role="${chip}" aria-pressed="false">
-                ${chip}
+              <button class="metric-chip" type="button" draggable="true" data-role="${chip.role}" data-count="${chip.count}" aria-pressed="false">
+                <span>${chip.role}</span>
+                <small>${chip.count}</small>
               </button>`
           )
           .join("")}
       </div>
-      <div class="confusion-board" aria-label="Confusion matrix label placement">
-        <div class="matrix-corner"></div>
-        <div class="matrix-heading">Predicted Positive</div>
-        <div class="matrix-heading">Predicted Negative</div>
-        <div class="matrix-heading">Actual Positive</div>
-        ${renderMetricCell(question.cells[0])}
-        ${renderMetricCell(question.cells[1])}
-        <div class="matrix-heading">Actual Negative</div>
-        ${renderMetricCell(question.cells[2])}
-        ${renderMetricCell(question.cells[3])}
-      </div>
-      <div class="metric-output" aria-live="polite">
-        <div>
-          <span>Precision</span>
-          <strong data-metric="precision">--</strong>
-        </div>
-        <div>
-          <span>Recall</span>
-          <strong data-metric="recall">--</strong>
-        </div>
-        <div>
-          <span>False positive rate</span>
-          <strong data-metric="fpr">--</strong>
-        </div>
+      <div class="formula-list" aria-label="Metric formula slots">
+        ${question.formulas.map((formula) => renderFormulaRow(formula)).join("")}
       </div>
     </div>`;
 }
 
-function renderMetricCell(cell) {
+function renderFormulaRow(formula) {
   return `
-    <button class="matrix-cell" type="button" data-cell-id="${cell.id}" data-count="${cell.count}" data-correct-role="${cell.role}" aria-label="${cell.actual}, ${cell.predicted}, count ${cell.count}">
-      <span class="matrix-count">${cell.count}</span>
-      <span class="matrix-drop-label">Drop label</span>
+    <div class="formula-row" data-formula-id="${formula.id}">
+      <div class="formula-name">${formula.label}</div>
+      <div class="fraction" aria-label="${formula.label} formula">
+        <div class="fraction-numerator">
+          ${renderFormulaSlot(formula.id, "numerator", 0, formula.expectedNumerator[0])}
+        </div>
+        <div class="fraction-bar"></div>
+        <div class="fraction-denominator">
+          ${formula.expectedDenominator
+            .map((expectedRole, index) => `
+              ${index > 0 ? '<span class="formula-plus">+</span>' : ""}
+              ${renderFormulaSlot(formula.id, "denominator", index, expectedRole)}
+            `)
+            .join("")}
+        </div>
+      </div>
+      <div class="formula-result">
+        <span>Result</span>
+        <strong data-formula-result="${formula.id}">--</strong>
+      </div>
+    </div>`;
+}
+
+function renderFormulaSlot(formulaId, part, index, expectedRole) {
+  return `
+    <button class="formula-slot" type="button" data-formula-id="${formulaId}" data-part="${part}" data-index="${index}" data-expected-role="${expectedRole}" aria-label="${formulaId} ${part} slot ${index + 1}">
+      <span>Drop</span>
     </button>`;
 }
 
@@ -235,8 +257,8 @@ function renderQuiz() {
 
   quizForm.innerHTML = quiz.questions
     .map((question, index) => {
-      const body = question.metricDrag
-        ? renderMetricDrag(question)
+      const body = question.formulaBuilder
+        ? renderFormulaBuilder(question)
         : question.freeResponse
           ? `<textarea name="${question.id}" aria-label="Answer for question ${index + 1}" placeholder="Type your answer here"></textarea>`
           : `<div class="choice-list">${question.choices
@@ -265,20 +287,23 @@ function renderQuiz() {
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("is-active", tab.dataset.quiz === state.currentQuiz);
   });
-  setupMetricDragQuestions();
+  setupFormulaBuilders();
 }
 
-function setupMetricDragQuestions() {
-  document.querySelectorAll(".metric-builder").forEach((builder) => {
+function setupFormulaBuilders() {
+  document.querySelectorAll(".formula-builder").forEach((builder) => {
     let selectedRole = "";
+    let selectedCount = "";
 
     builder.querySelectorAll(".metric-chip").forEach((chip) => {
       chip.addEventListener("dragstart", (event) => {
         event.dataTransfer.setData("text/plain", chip.dataset.role);
+        event.dataTransfer.setData("application/x-count", chip.dataset.count);
       });
 
       chip.addEventListener("click", () => {
         selectedRole = chip.dataset.role;
+        selectedCount = chip.dataset.count;
         builder.querySelectorAll(".metric-chip").forEach((otherChip) => {
           otherChip.classList.toggle("is-selected", otherChip === chip);
           otherChip.setAttribute("aria-pressed", String(otherChip === chip));
@@ -286,25 +311,31 @@ function setupMetricDragQuestions() {
       });
     });
 
-    builder.querySelectorAll(".matrix-cell").forEach((cell) => {
-      cell.addEventListener("dragover", (event) => {
+    builder.querySelectorAll(".formula-slot").forEach((slot) => {
+      slot.addEventListener("dragover", (event) => {
         event.preventDefault();
-        cell.classList.add("is-ready");
+        slot.classList.add("is-ready");
       });
 
-      cell.addEventListener("dragleave", () => {
-        cell.classList.remove("is-ready");
+      slot.addEventListener("dragleave", () => {
+        slot.classList.remove("is-ready");
       });
 
-      cell.addEventListener("drop", (event) => {
+      slot.addEventListener("drop", (event) => {
         event.preventDefault();
-        placeMetricRole(builder, cell, event.dataTransfer.getData("text/plain"));
+        placeFormulaRole(
+          builder,
+          slot,
+          event.dataTransfer.getData("text/plain"),
+          event.dataTransfer.getData("application/x-count")
+        );
       });
 
-      cell.addEventListener("click", () => {
+      slot.addEventListener("click", () => {
         if (selectedRole) {
-          placeMetricRole(builder, cell, selectedRole);
+          placeFormulaRole(builder, slot, selectedRole, selectedCount);
           selectedRole = "";
+          selectedCount = "";
           builder.querySelectorAll(".metric-chip").forEach((chip) => {
             chip.classList.remove("is-selected");
             chip.setAttribute("aria-pressed", "false");
@@ -313,60 +344,42 @@ function setupMetricDragQuestions() {
       });
     });
 
-    updateMetricOutputs(builder);
+    updateFormulaOutputs(builder);
   });
 }
 
-function placeMetricRole(builder, cell, role) {
+function placeFormulaRole(builder, slot, role, count) {
   if (!role) return;
-
-  builder.querySelectorAll(`.matrix-cell[data-role="${role}"]`).forEach((occupiedCell) => {
-    occupiedCell.removeAttribute("data-role");
-    occupiedCell.querySelector(".matrix-drop-label").textContent = "Drop label";
-  });
-
-  cell.dataset.role = role;
-  cell.classList.remove("is-ready");
-  cell.querySelector(".matrix-drop-label").textContent = role;
-  updateMetricOutputs(builder);
+  slot.dataset.role = role;
+  slot.dataset.count = count;
+  slot.classList.remove("is-ready");
+  slot.innerHTML = `<span>${role}</span><small>${count}</small>`;
+  updateFormulaOutputs(builder);
 }
 
-function getMetricValues(builder) {
-  const values = {};
-  builder.querySelectorAll(".matrix-cell").forEach((cell) => {
-    if (cell.dataset.role) {
-      values[cell.dataset.role] = Number(cell.dataset.count);
-    }
-  });
-  return values;
+function getFormulaValues(row) {
+  const numeratorSlots = [...row.querySelectorAll('.formula-slot[data-part="numerator"]')];
+  const denominatorSlots = [...row.querySelectorAll('.formula-slot[data-part="denominator"]')];
+  const hasAllValues = [...numeratorSlots, ...denominatorSlots].every((slot) => Number.isFinite(Number(slot.dataset.count)));
+  const numerator = numeratorSlots.reduce((sum, slot) => sum + Number(slot.dataset.count || 0), 0);
+  const denominator = denominatorSlots.reduce((sum, slot) => sum + Number(slot.dataset.count || 0), 0);
+  return { hasAllValues, numerator, denominator };
 }
 
-function updateMetricOutputs(builder) {
-  const values = getMetricValues(builder);
-  const hasAllRoles = ["TP", "FP", "FN", "TN"].every((role) => Number.isFinite(values[role]));
-  const output = {
-    precision: "--",
-    recall: "--",
-    fpr: "--"
-  };
-
-  if (hasAllRoles) {
-    output.precision = (values.TP / (values.TP + values.FP)).toFixed(3);
-    output.recall = (values.TP / (values.TP + values.FN)).toFixed(3);
-    output.fpr = (values.FP / (values.FP + values.TN)).toFixed(3);
-  }
-
-  Object.entries(output).forEach(([metric, value]) => {
-    builder.querySelector(`[data-metric="${metric}"]`).textContent = value;
+function updateFormulaOutputs(builder) {
+  builder.querySelectorAll(".formula-row").forEach((row) => {
+    const values = getFormulaValues(row);
+    const output = values.hasAllValues && values.denominator > 0
+      ? (values.numerator / values.denominator).toFixed(3)
+      : "--";
+    builder.querySelector(`[data-formula-result="${row.dataset.formulaId}"]`).textContent = output;
   });
 }
 
-function metricDragScore(question) {
-  const builder = quizForm.querySelector(`[data-metric-question="${question.id}"]`);
+function formulaBuilderScore(question) {
+  const builder = quizForm.querySelector(`[data-formula-question="${question.id}"]`);
   if (!builder) return false;
-  return [...builder.querySelectorAll(".matrix-cell")].every(
-    (cell) => cell.dataset.role === cell.dataset.correctRole
-  );
+  return [...builder.querySelectorAll(".formula-slot")].every((slot) => slot.dataset.role === slot.dataset.expectedRole);
 }
 
 function gradeQuiz() {
@@ -378,8 +391,8 @@ function gradeQuiz() {
     let isCorrect = false;
     let response = "";
 
-    if (question.metricDrag) {
-      isCorrect = metricDragScore(question);
+    if (question.formulaBuilder) {
+      isCorrect = formulaBuilderScore(question);
     } else if (question.freeResponse) {
       const field = quizForm.elements[question.id];
       response = field.value;

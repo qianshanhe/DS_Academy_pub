@@ -1,4 +1,4 @@
-const CACHE_NAME = "ds-academy-quiz-v2";
+const CACHE_NAME = "ds-academy-quiz-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
