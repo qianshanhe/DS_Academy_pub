@@ -22,12 +22,18 @@ const quizzes = {
       },
       {
         id: "daily-q2",
-        type: "Calculation",
+        type: "Interactive Calculation",
         skill: "Confusion matrix math",
         prompt:
-          "A classifier has TP=80, FP=40, FN=20, TN=860. Enter precision, recall, and false positive rate.",
-        freeResponse: true,
-        keywords: ["precision", "0.667", "2/3", "recall", "0.8", "80", "false positive", "0.044", "4.4"],
+          "Place TP, FP, FN, and TN into the confusion matrix. The dashboard will calculate precision, recall, and false positive rate for you.",
+        metricDrag: true,
+        chips: ["TP", "FP", "FN", "TN"],
+        cells: [
+          { id: "pred-pos-actual-pos", actual: "Actual Positive", predicted: "Predicted Positive", count: 80, role: "TP" },
+          { id: "pred-neg-actual-pos", actual: "Actual Positive", predicted: "Predicted Negative", count: 20, role: "FN" },
+          { id: "pred-pos-actual-neg", actual: "Actual Negative", predicted: "Predicted Positive", count: 40, role: "FP" },
+          { id: "pred-neg-actual-neg", actual: "Actual Negative", predicted: "Predicted Negative", count: 860, role: "TN" }
+        ],
         explanation:
           "Precision = 80 / (80 + 40) = 0.667. Recall = 80 / (80 + 20) = 0.800. False positive rate = 40 / (40 + 860) = 0.044."
       },
@@ -165,6 +171,55 @@ function freeResponseScore(question, response) {
   return hits.length >= Math.ceil(question.keywords.length * 0.45);
 }
 
+function renderMetricDrag(question) {
+  return `
+    <div class="metric-builder" data-metric-question="${question.id}">
+      <div class="chip-bank" aria-label="Metric labels to place">
+        ${question.chips
+          .map(
+            (chip) => `
+              <button class="metric-chip" type="button" draggable="true" data-role="${chip}" aria-pressed="false">
+                ${chip}
+              </button>`
+          )
+          .join("")}
+      </div>
+      <div class="confusion-board" aria-label="Confusion matrix label placement">
+        <div class="matrix-corner"></div>
+        <div class="matrix-heading">Predicted Positive</div>
+        <div class="matrix-heading">Predicted Negative</div>
+        <div class="matrix-heading">Actual Positive</div>
+        ${renderMetricCell(question.cells[0])}
+        ${renderMetricCell(question.cells[1])}
+        <div class="matrix-heading">Actual Negative</div>
+        ${renderMetricCell(question.cells[2])}
+        ${renderMetricCell(question.cells[3])}
+      </div>
+      <div class="metric-output" aria-live="polite">
+        <div>
+          <span>Precision</span>
+          <strong data-metric="precision">--</strong>
+        </div>
+        <div>
+          <span>Recall</span>
+          <strong data-metric="recall">--</strong>
+        </div>
+        <div>
+          <span>False positive rate</span>
+          <strong data-metric="fpr">--</strong>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderMetricCell(cell) {
+  return `
+    <button class="matrix-cell" type="button" data-cell-id="${cell.id}" data-count="${cell.count}" data-correct-role="${cell.role}" aria-label="${cell.actual}, ${cell.predicted}, count ${cell.count}">
+      <span class="matrix-count">${cell.count}</span>
+      <span class="matrix-drop-label">Drop label</span>
+    </button>`;
+}
+
 function renderQuiz() {
   const quiz = quizzes[state.currentQuiz];
   state.submitted = false;
@@ -180,9 +235,11 @@ function renderQuiz() {
 
   quizForm.innerHTML = quiz.questions
     .map((question, index) => {
-      const body = question.freeResponse
-        ? `<textarea name="${question.id}" aria-label="Answer for question ${index + 1}" placeholder="Type your answer here"></textarea>`
-        : `<div class="choice-list">${question.choices
+      const body = question.metricDrag
+        ? renderMetricDrag(question)
+        : question.freeResponse
+          ? `<textarea name="${question.id}" aria-label="Answer for question ${index + 1}" placeholder="Type your answer here"></textarea>`
+          : `<div class="choice-list">${question.choices
             .map(
               (choice, choiceIndex) => `
                 <label class="choice">
@@ -208,6 +265,108 @@ function renderQuiz() {
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("is-active", tab.dataset.quiz === state.currentQuiz);
   });
+  setupMetricDragQuestions();
+}
+
+function setupMetricDragQuestions() {
+  document.querySelectorAll(".metric-builder").forEach((builder) => {
+    let selectedRole = "";
+
+    builder.querySelectorAll(".metric-chip").forEach((chip) => {
+      chip.addEventListener("dragstart", (event) => {
+        event.dataTransfer.setData("text/plain", chip.dataset.role);
+      });
+
+      chip.addEventListener("click", () => {
+        selectedRole = chip.dataset.role;
+        builder.querySelectorAll(".metric-chip").forEach((otherChip) => {
+          otherChip.classList.toggle("is-selected", otherChip === chip);
+          otherChip.setAttribute("aria-pressed", String(otherChip === chip));
+        });
+      });
+    });
+
+    builder.querySelectorAll(".matrix-cell").forEach((cell) => {
+      cell.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        cell.classList.add("is-ready");
+      });
+
+      cell.addEventListener("dragleave", () => {
+        cell.classList.remove("is-ready");
+      });
+
+      cell.addEventListener("drop", (event) => {
+        event.preventDefault();
+        placeMetricRole(builder, cell, event.dataTransfer.getData("text/plain"));
+      });
+
+      cell.addEventListener("click", () => {
+        if (selectedRole) {
+          placeMetricRole(builder, cell, selectedRole);
+          selectedRole = "";
+          builder.querySelectorAll(".metric-chip").forEach((chip) => {
+            chip.classList.remove("is-selected");
+            chip.setAttribute("aria-pressed", "false");
+          });
+        }
+      });
+    });
+
+    updateMetricOutputs(builder);
+  });
+}
+
+function placeMetricRole(builder, cell, role) {
+  if (!role) return;
+
+  builder.querySelectorAll(`.matrix-cell[data-role="${role}"]`).forEach((occupiedCell) => {
+    occupiedCell.removeAttribute("data-role");
+    occupiedCell.querySelector(".matrix-drop-label").textContent = "Drop label";
+  });
+
+  cell.dataset.role = role;
+  cell.classList.remove("is-ready");
+  cell.querySelector(".matrix-drop-label").textContent = role;
+  updateMetricOutputs(builder);
+}
+
+function getMetricValues(builder) {
+  const values = {};
+  builder.querySelectorAll(".matrix-cell").forEach((cell) => {
+    if (cell.dataset.role) {
+      values[cell.dataset.role] = Number(cell.dataset.count);
+    }
+  });
+  return values;
+}
+
+function updateMetricOutputs(builder) {
+  const values = getMetricValues(builder);
+  const hasAllRoles = ["TP", "FP", "FN", "TN"].every((role) => Number.isFinite(values[role]));
+  const output = {
+    precision: "--",
+    recall: "--",
+    fpr: "--"
+  };
+
+  if (hasAllRoles) {
+    output.precision = (values.TP / (values.TP + values.FP)).toFixed(3);
+    output.recall = (values.TP / (values.TP + values.FN)).toFixed(3);
+    output.fpr = (values.FP / (values.FP + values.TN)).toFixed(3);
+  }
+
+  Object.entries(output).forEach(([metric, value]) => {
+    builder.querySelector(`[data-metric="${metric}"]`).textContent = value;
+  });
+}
+
+function metricDragScore(question) {
+  const builder = quizForm.querySelector(`[data-metric-question="${question.id}"]`);
+  if (!builder) return false;
+  return [...builder.querySelectorAll(".matrix-cell")].every(
+    (cell) => cell.dataset.role === cell.dataset.correctRole
+  );
 }
 
 function gradeQuiz() {
@@ -219,7 +378,9 @@ function gradeQuiz() {
     let isCorrect = false;
     let response = "";
 
-    if (question.freeResponse) {
+    if (question.metricDrag) {
+      isCorrect = metricDragScore(question);
+    } else if (question.freeResponse) {
       const field = quizForm.elements[question.id];
       response = field.value;
       isCorrect = freeResponseScore(question, response);
