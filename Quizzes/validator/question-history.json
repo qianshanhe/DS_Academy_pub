@@ -1,0 +1,47 @@
+[
+  {
+    "id": "legacy-churn-accuracy",
+    "sources": ["8e74e98", "ffc5c79", "694eb9f"],
+    "prompt": "A churn model has 92% accuracy, but only 4% of users churn. Which evaluation move is most defensible?"
+  },
+  {
+    "id": "legacy-metric-entry",
+    "sources": ["8e74e98"],
+    "prompt": "A classifier has TP=80, FP=40, FN=20, TN=860. Enter precision, recall, and false positive rate."
+  },
+  {
+    "id": "legacy-confusion-matrix-drag",
+    "sources": ["ffc5c79"],
+    "prompt": "Place TP, FP, FN, and TN into the confusion matrix. The dashboard will calculate precision, recall, and false positive rate for you."
+  },
+  {
+    "id": "legacy-metric-formula-builder",
+    "sources": ["694eb9f"],
+    "prompt": "Build each metric formula by placing TP, FP, FN, and TN into the empty numerator and denominator slots. The dashboard will calculate the result from the formula you build."
+  },
+  {
+    "id": "legacy-churn-treatment",
+    "sources": ["8e74e98", "ffc5c79", "694eb9f"],
+    "prompt": "A churn-risk model ranks customers by probability of leaving. Why does that not by itself tell you who should receive a retention offer?"
+  },
+  {
+    "id": "legacy-support-experiment",
+    "sources": ["8e74e98", "ffc5c79", "694eb9f"],
+    "prompt": "A support team asks whether an AI answer assistant reduces repeat contacts. Which method best answers that question?"
+  },
+  {
+    "id": "legacy-sequential-test",
+    "sources": ["8e74e98", "ffc5c79", "694eb9f"],
+    "prompt": "When might a sequential test be preferable to a fixed-horizon A/B test, and what risk must you control?"
+  },
+  {
+    "id": "legacy-recommendation-monitoring",
+    "sources": ["8e74e98", "ffc5c79", "694eb9f"],
+    "prompt": "A deployed recommendation model has stable offline validation metrics but worse business outcomes. Which investigation is most complete?"
+  },
+  {
+    "id": "legacy-forecast-versus-impact",
+    "sources": ["8e74e98", "ffc5c79", "694eb9f"],
+    "prompt": "Explain the difference between forecasting demand and estimating product impact in two or three sentences."
+  }
+]
