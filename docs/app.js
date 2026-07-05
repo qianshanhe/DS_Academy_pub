@@ -662,6 +662,7 @@ const quizBank = {
 };
 
 const millisecondsPerDay = 24 * 60 * 60 * 1000;
+const urlParameters = new URLSearchParams(window.location.search);
 
 function localDayNumber(date = new Date()) {
   return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / millisecondsPerDay);
@@ -673,10 +674,12 @@ function positiveModulo(value, divisor) {
 
 function getQuizSelection(type, date = new Date()) {
   const sets = quizBank[type];
+  const requestedSetId = urlParameters.get("quiz") === type ? urlParameters.get("set") : "";
+  const requestedSet = requestedSetId ? sets.find((set) => set.id === requestedSetId) : null;
   const dayNumber = localDayNumber(date);
   const rotationNumber = type === "weekly" ? Math.floor(dayNumber / 7) : dayNumber;
-  const quiz = sets[positiveModulo(rotationNumber, sets.length)];
-  return { ...quiz, dateKey: formatDateKey(date) };
+  const quiz = requestedSet || sets[positiveModulo(rotationNumber, sets.length)];
+  return { ...quiz, dateKey: formatDateKey(date), isAdHoc: Boolean(requestedSet) };
 }
 
 function formatDateKey(date) {
@@ -687,8 +690,13 @@ function formatDateKey(date) {
 }
 
 const storageKey = "ds-academy-quiz-attempts";
+const requestedQuiz = urlParameters.get("quiz");
 const state = {
-  currentQuiz: new Date().getDay() === 0 ? "weekly" : "daily",
+  currentQuiz: ["daily", "weekly"].includes(requestedQuiz)
+    ? requestedQuiz
+    : new Date().getDay() === 0
+      ? "weekly"
+      : "daily",
   submitted: false
 };
 
@@ -795,7 +803,7 @@ function renderQuiz() {
   const quiz = getQuizSelection(state.currentQuiz);
   state.submitted = false;
   quizTitle.textContent = quiz.title;
-  quizMeta.textContent = `${quiz.questions.length} questions · ${quiz.dateKey}`;
+  quizMeta.textContent = `${quiz.questions.length} questions · ${quiz.isAdHoc ? "Ad-hoc set" : quiz.dateKey}`;
   quizMode.textContent = quiz.mode;
   quizHeading.textContent = quiz.heading;
   resultPanel.hidden = true;
